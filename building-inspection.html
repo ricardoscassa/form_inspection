@@ -625,6 +625,8 @@ Block B&#9;Room 10&#9;2HLF0001ST0000"></textarea>
   </div>
 </div>
 
+<!-- Compression (pako = zlib deflate, matches VBA zlib output) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
 <!-- QR lib -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
@@ -762,22 +764,42 @@ function toggleDD(id) {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  ENCODING
+//  ENCODING  — pako deflate + base64url
+//  VBA side uses the same deflate (zlib) + base64url to produce
+//  identical payloads. Backward-compatible: old uncompressed links
+//  are detected and decoded transparently.
 // ─────────────────────────────────────────────────────────────
 function encode(obj) {
-    try {
-        return btoa(unescape(encodeURIComponent(JSON.stringify(obj))))
-            .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-    } catch(e) {
-        return btoa(JSON.stringify(obj)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+    const json     = JSON.stringify(obj);
+    const deflated = pako.deflate(json);                  // Uint8Array
+    let b64 = '';
+    // Convert Uint8Array → binary string → btoa
+    const chunk = 0x8000;
+    for (let i = 0; i < deflated.length; i += chunk) {
+        b64 += String.fromCharCode.apply(null, deflated.subarray(i, i + chunk));
     }
+    return btoa(b64).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 }
+
 function decode(s) {
     try {
-        return JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g,'+').replace(/_/g,'/')))));
-    } catch(e) {
-        try { return JSON.parse(atob(s.replace(/-/g,'+').replace(/_/g,'/'))); } catch(e2) { return null; }
-    }
+        const b64     = s.replace(/-/g,'+').replace(/_/g,'/');
+        const binary  = atob(b64);
+        const bytes   = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        // Try compressed first
+        try {
+            const json = pako.inflate(bytes, { to: 'string' });
+            return JSON.parse(json);
+        } catch(_) {
+            // Fall back to old uncompressed format (legacy links)
+            try {
+                return JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g,'+').replace(/_/g,'/')))));
+            } catch(_2) {
+                return JSON.parse(atob(s.replace(/-/g,'+').replace(/_/g,'/')));
+            }
+        }
+    } catch(e) { return null; }
 }
 
 // ─────────────────────────────────────────────────────────────
