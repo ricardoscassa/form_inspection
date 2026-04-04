@@ -911,16 +911,58 @@ function copyLink() {
 }
 
 // ── PC: Send share link by email ──────────────────────────────
+// mailto: is plain-text only — no buttons possible.
+// Solution: generate a styled HTML email file the user can open or drag into Outlook.
 function emailLink() {
     const url = S.shareUrl || document.getElementById('shareLinkBox').textContent;
     if (!url) { showMsg('Generate First', 'Click Generate QR + Link first.'); return; }
     const email = getReportEmail();
-    const to = email || '';
-    const subject = encodeURIComponent('Building Inspection — Share Link');
-    const body = encodeURIComponent(
-        `Hello,\n\nYour building inspection data is ready to load on the tablet.\n\nTo start the inspection, click or tap the link below:\n\n  >> OPEN INSPECTION <<\n  ${url}\n\nIf the link doesn't open automatically, copy and paste it into your browser's address bar.\n\nThank you.`
-    );
-    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+    const dateLabel = todayReadable();
+    const dateFile  = dateStr();
+
+    // Build polished HTML email with a real button
+    const htmlEmail = [
+        '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Building Inspection</title></head>',
+        '<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">',
+        '<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:30px 0;">',
+        '<tr><td align="center">',
+        '<table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">',
+        '<tr><td style="background:linear-gradient(135deg,#667eea,#764ba2);padding:30px 40px;text-align:center;">',
+        '<div style="font-size:28px;margin-bottom:8px;">&#127959;</div>',
+        '<h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">Building Inspection</h1>',
+        '<p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">' + dateLabel + '</p>',
+        '</td></tr>',
+        '<tr><td style="padding:36px 40px;text-align:center;">',
+        '<p style="margin:0 0 10px;font-size:16px;color:#333;">Your inspection data is ready.</p>',
+        '<p style="margin:0 0 28px;font-size:14px;color:#666;line-height:1.6;">Tap the button below on your tablet or phone to load today\'s inspection and begin.</p>',
+        '<a href="' + url + '" style="display:inline-block;background:linear-gradient(135deg,#667eea,#764ba2);color:#ffffff;text-decoration:none;font-size:16px;font-weight:700;padding:16px 40px;border-radius:10px;">&#9654;&nbsp;&nbsp;Open Inspection</a>',
+        '<p style="margin:28px 0 0;font-size:12px;color:#aaa;">If the button does not work, forward this email to your tablet and tap it there.</p>',
+        '</td></tr>',
+        '<tr><td style="background:#f8f9fa;padding:18px 40px;text-align:center;border-top:1px solid #e9ecef;">',
+        '<p style="margin:0;font-size:12px;color:#999;">Production Control Inspection System</p>',
+        '</td></tr>',
+        '</table></td></tr></table></body></html>'
+    ].join('\n');
+
+    // Download the HTML file
+    const blob = new Blob([htmlEmail], { type: 'text/html;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'inspection_email_' + dateFile + '.html';
+    a.click();
+
+    // Also open the mail client pre-addressed (plain text fallback)
+    setTimeout(() => {
+        const to = email || '';
+        const subject = encodeURIComponent('Building Inspection \u2014 ' + dateLabel);
+        const plainBody = encodeURIComponent(
+            'Please open the attached file "inspection_email_' + dateFile + '.html" \u2014 it contains a button to start the inspection.\n\nOr open this link directly:\n' + url
+        );
+        window.location.href = 'mailto:' + to + '?subject=' + subject + '&body=' + plainBody;
+    }, 800);
+
+    showMsg('Email Ready',
+        'An HTML email file has been downloaded.\n\nOpen it to preview the button \u2014 or drag it into an Outlook message to send it with the button intact.');
 }
 
 function downloadPcJson() {
