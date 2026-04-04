@@ -470,7 +470,7 @@ Block B&#9;Room 10&#9;2HLF0001ST0000"></textarea>
       <div class="action-buttons">
         <button class="button" onclick="parseAndGenerate()">Generate QR + Link</button>
         <button class="button secondary" onclick="loadSavedPcData()">Load Saved</button>
-        <button class="button danger" onclick="clearPcData()">✕ Clear</button>
+        <button class="button danger" onclick="clearPcData()">Clear</button>
         <button class="button secondary" onclick="showPage('mainMenuPage')">← Back to Menu</button>
       </div>
     </div>
@@ -503,7 +503,7 @@ Block B&#9;Room 10&#9;2HLF0001ST0000"></textarea>
       <h3 style="margin-bottom:10px;color:#333;">Load Previous Data</h3>
       <p style="font-size:0.88rem;color:#666;margin-bottom:14px;">Load a previously exported JSON to re-edit or re-generate the QR.</p>
       <input type="file" id="pcFileInput" accept=".json" style="display:none" onchange="uploadPcJson(event)">
-      <button class="button secondary" style="width:100%" onclick="document.getElementById('pcFileInput').click()">📂 Load JSON File</button>
+      <button class="button secondary" style="width:100%" onclick="document.getElementById('pcFileInput').click()">Load JSON File</button>
     </div>
   </div>
 
@@ -512,6 +512,7 @@ Block B&#9;Room 10&#9;2HLF0001ST0000"></textarea>
   ══════════════════════════════════════ -->
   <div id="tabletLoadPage" class="page">
     <div class="card">
+      
       <h2 style="text-align:center;margin-bottom:10px;color:#333;">Load Inspection Data</h2>
       <p style="text-align:center;color:#666;font-size:0.95rem;line-height:1.6;margin-bottom:22px;">
         Open the share link from the PC to start instantly,<br>or paste it below.
@@ -519,7 +520,7 @@ Block B&#9;Room 10&#9;2HLF0001ST0000"></textarea>
 
       <label style="font-weight:600;color:#555;font-size:1rem;margin-bottom:8px;display:block;">Paste the share link:</label>
       <textarea id="pasteUrlInput" class="room-textarea" style="min-height:80px;font-size:0.9rem;" placeholder="Paste the share link here…"></textarea>
-      <button class="button" style="width:100%;margin-top:12px" onclick="loadFromPastedUrl()">▶ Load Inspection</button>
+      <button class="button" style="width:100%;margin-top:12px" onclick="loadFromPastedUrl()">Load Inspection</button>
 
       <div class="divider-or">or</div>
 
@@ -563,6 +564,7 @@ Block B&#9;Room 10&#9;2HLF0001ST0000"></textarea>
       <!-- ECS list -->
       <div id="ecsGrid" class="code-inspection-grid">
         <div style="text-align:center;padding:40px 20px;color:#aaa">
+          
           <div style="font-weight:600;font-size:1rem;color:#555;margin-bottom:6px">Select a building and room</div>
           <div style="font-size:0.9rem">Use the dropdowns above to navigate.</div>
         </div>
@@ -575,8 +577,8 @@ Block B&#9;Room 10&#9;2HLF0001ST0000"></textarea>
       </div>
 
       <div class="action-buttons">
-        <button class="button success" onclick="startExportFlow()">Export / Send data</button>
-        <button class="button warning" onclick="downloadTabletJson()">Save backup locally</button>
+        <button class="button success" onclick="startExportFlow()">Export to CSV</button>
+        <button class="button warning" onclick="downloadTabletJson()">Save Data (JSON)</button>
         <button class="button secondary" onclick="showPage('mainMenuPage')">← Menu</button>
       </div>
     </div>
@@ -603,6 +605,7 @@ Block B&#9;Room 10&#9;2HLF0001ST0000"></textarea>
 
     <!-- Send by email -->
     <button class="action-sheet-btn" id="emailCsvBtn" onclick="emailCsv()">
+      
       <div>
         <div>Send by Email</div>
         <div class="as-sub" id="emailCsvSub">Opens your email app with the CSV attached</div>
@@ -611,6 +614,7 @@ Block B&#9;Room 10&#9;2HLF0001ST0000"></textarea>
 
     <!-- Save / Download -->
     <button class="action-sheet-btn" onclick="downloadCsvOnly()">
+      
       <div>
         <div>Save to Device</div>
         <div class="as-sub">Downloads the CSV file to this device</div>
@@ -907,8 +911,8 @@ function copyLink() {
 }
 
 // ── PC: Send share link by email ──────────────────────────────
-// mailto: is plain-text only — no buttons possible.
-// Solution: generate a styled HTML email file the user can open or drag into Outlook.
+// Generates a .eml file — double-clicking it opens Outlook with the message
+// ready to send, including a proper styled button linking to the inspection.
 function emailLink() {
     const url = S.shareUrl || document.getElementById('shareLinkBox').textContent;
     if (!url) { showMsg('Generate First', 'Click Generate QR + Link first.'); return; }
@@ -916,49 +920,65 @@ function emailLink() {
     const dateLabel = todayReadable();
     const dateFile  = dateStr();
 
-    // Build polished HTML email with a real button
-    const htmlEmail = [
-        '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Building Inspection</title></head>',
+    // HTML body of the email — styled button, no raw URL visible
+    const htmlBody = [
+        '<!DOCTYPE html><html><head><meta charset="UTF-8"></head>',
         '<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">',
         '<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:30px 0;">',
         '<tr><td align="center">',
         '<table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">',
-        '<tr><td style="background:linear-gradient(135deg,#667eea,#764ba2);padding:30px 40px;text-align:center;">',
-        '<div style="font-size:28px;margin-bottom:8px;">&#127959;</div>',
-        '<h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">Building Inspection</h1>',
-        '<p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">' + dateLabel + '</p>',
+        '<tr><td style="background:linear-gradient(135deg,#667eea,#764ba2);padding:28px 40px;text-align:center;">',
+        '<h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.3px;">Building Inspection</h1>',
+        '<p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:13px;">' + dateLabel + '</p>',
         '</td></tr>',
         '<tr><td style="padding:36px 40px;text-align:center;">',
-        '<p style="margin:0 0 10px;font-size:16px;color:#333;">Your inspection data is ready.</p>',
-        '<p style="margin:0 0 28px;font-size:14px;color:#666;line-height:1.6;">Tap the button below on your tablet or phone to load today\'s inspection and begin.</p>',
-        '<a href="' + url + '" style="display:inline-block;background:linear-gradient(135deg,#667eea,#764ba2);color:#ffffff;text-decoration:none;font-size:16px;font-weight:700;padding:16px 40px;border-radius:10px;">&#9654;&nbsp;&nbsp;Open Inspection</a>',
-        '<p style="margin:28px 0 0;font-size:12px;color:#aaa;">If the button does not work, forward this email to your tablet and tap it there.</p>',
+        '<p style="margin:0 0 8px;font-size:15px;color:#333;font-weight:600;">Your inspection data is ready.</p>',
+        '<p style="margin:0 0 28px;font-size:13px;color:#666;line-height:1.6;">Open the link below on your tablet or phone to load today's inspection and begin.</p>',
+        '<a href="' + url + '" style="display:inline-block;background:#667eea;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 38px;border-radius:8px;letter-spacing:0.3px;">Open Inspection</a>',
+        '<p style="margin:28px 0 0;font-size:11px;color:#bbb;">If the button does not open, forward this email to your tablet and tap it there.</p>',
         '</td></tr>',
-        '<tr><td style="background:#f8f9fa;padding:18px 40px;text-align:center;border-top:1px solid #e9ecef;">',
-        '<p style="margin:0;font-size:12px;color:#999;">Production Control Inspection System</p>',
+        '<tr><td style="background:#f8f9fa;padding:16px 40px;text-align:center;border-top:1px solid #e9ecef;">',
+        '<p style="margin:0;font-size:11px;color:#aaa;">Production Control Inspection System</p>',
         '</td></tr>',
         '</table></td></tr></table></body></html>'
-    ].join('\n');
+    ].join('');
 
-    // Download the HTML file
-    const blob = new Blob([htmlEmail], { type: 'text/html;charset=utf-8' });
+    // Plain-text alternative (shown by email clients that block HTML)
+    const plainText = 'Building Inspection — ' + dateLabel + '\r\n\r\n' +
+        'Your inspection data is ready. Open the link below on your tablet:\r\n\r\n' +
+        url + '\r\n\r\nProduction Control Inspection System';
+
+    // Build a valid .eml file — double-click opens it in Outlook ready to send
+    const to = email || '';
+    const subject = 'Building Inspection — ' + dateLabel;
+    const boundary = 'bi_' + Date.now();
+
+    const eml = [
+        'MIME-Version: 1.0',
+        'To: ' + to,
+        'Subject: ' + subject,
+        'Content-Type: multipart/alternative; boundary="' + boundary + '"',
+        '',
+        '--' + boundary,
+        'Content-Type: text/plain; charset=UTF-8',
+        'Content-Transfer-Encoding: 7bit',
+        '',
+        plainText,
+        '',
+        '--' + boundary,
+        'Content-Type: text/html; charset=UTF-8',
+        'Content-Transfer-Encoding: 7bit',
+        '',
+        htmlBody,
+        '',
+        '--' + boundary + '--'
+    ].join('\r\n');
+
+    const blob = new Blob([eml], { type: 'message/rfc822' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'inspection_email_' + dateFile + '.html';
+    a.download = 'inspection_' + dateFile + '.eml';
     a.click();
-
-    // Also open the mail client pre-addressed (plain text fallback)
-    setTimeout(() => {
-        const to = email || '';
-        const subject = encodeURIComponent('Building Inspection \u2014 ' + dateLabel);
-        const plainBody = encodeURIComponent(
-            'Please open the attached file "inspection_email_' + dateFile + '.html" \u2014 it contains a button to start the inspection.\n\nOr open this link directly:\n' + url
-        );
-        window.location.href = 'mailto:' + to + '?subject=' + subject + '&body=' + plainBody;
-    }, 800);
-
-    showMsg('Email Ready',
-        'An HTML email file has been downloaded.\n\nOpen it to preview the button \u2014 or drag it into an Outlook message to send it with the button intact.');
 }
 
 function downloadPcJson() {
@@ -1174,7 +1194,7 @@ function updateNavBtns() {
     document.getElementById('prevBtn').disabled = idx <= 0;
     const nb = document.getElementById('nextBtn');
     nb.disabled = idx >= S.roomList.length - 1;
-    nb.textContent = idx >= S.roomList.length - 1 ? 'Last Room ✓' : 'Next Room →';
+    nb.textContent = idx >= S.roomList.length - 1 ? 'Last Room' : 'Next Room →';
 }
 
 function updateInfo() {
@@ -1195,6 +1215,7 @@ function renderEcs(bld, room) {
 
     if (!bld || !room) {
         grid.innerHTML = `<div style="text-align:center;padding:40px 20px;color:#aaa">
+            
             <div style="font-weight:600;font-size:1rem;color:#555;margin-bottom:6px">Select a building and room</div>
             <div style="font-size:0.9rem">Use the dropdowns above to navigate.</div></div>`;
         return;
@@ -1203,6 +1224,7 @@ function renderEcs(bld, room) {
     const codes = getCodes(bld, room);
     if (!codes.length) {
         grid.innerHTML = `<div style="text-align:center;padding:40px 20px;color:#aaa">
+            
             <div style="font-size:0.95rem">No ECS codes for this room.</div></div>`;
         return;
     }
@@ -1251,7 +1273,7 @@ function renderEcs(bld, room) {
         // Clear option
         const clearDiv = document.createElement('div');
         clearDiv.className = 'status-option clear';
-        clearDiv.textContent = '✕  Clear selection';
+        clearDiv.textContent = 'Clear selection';
         clearDiv.style.display = val ? 'block' : 'none';
         clearDiv.addEventListener('click', e => {
             e.stopPropagation();
