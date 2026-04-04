@@ -468,7 +468,7 @@ Block B&#9;Room 10&#9;2HLF0001ST0000"></textarea>
       </div>
 
       <div class="action-buttons">
-        <button class="button" onclick="parseAndGenerate()">⚡ Generate QR + Link</button>
+        <button class="button" onclick="parseAndGenerate()">Generate QR + Link</button>
         <button class="button secondary" onclick="loadSavedPcData()">Load Saved</button>
         <button class="button danger" onclick="clearPcData()">✕ Clear</button>
         <button class="button secondary" onclick="showPage('mainMenuPage')">← Back to Menu</button>
@@ -1204,7 +1204,6 @@ function renderEcs(bld, room) {
     const codes = getCodes(bld, room);
     if (!codes.length) {
         grid.innerHTML = `<div style="text-align:center;padding:40px 20px;color:#aaa">
-            <div style="font-size:2rem;margin-bottom:10px">📋</div>
             <div style="font-size:0.95rem">No ECS codes for this room.</div></div>`;
         return;
     }
