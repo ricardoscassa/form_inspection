@@ -974,11 +974,14 @@ function emailLink() {
         '--' + boundary + '--'
     ].join('\r\n');
 
+    // Open the .eml directly — OS hands it to Mail/Outlook without saving first
     const blob = new Blob([eml], { type: 'message/rfc822' });
+    const emlUrl = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'inspection_' + dateFile + '.eml';
+    a.href = emlUrl;
+    a.target = '_blank';
     a.click();
+    setTimeout(() => URL.revokeObjectURL(emlUrl), 3000);
 }
 
 function downloadPcJson() {
