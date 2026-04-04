@@ -439,7 +439,7 @@ textarea, input[type=text], input[type=email] { -webkit-user-select: text; user-
 
     <!-- Email settings card (always visible at top) -->
     <div class="card">
-      <h3 style="margin-bottom:14px;color:#333;">⚙️ Settings</h3>
+      <h3 style="margin-bottom:14px;color:#333;">Settings</h3>
       <div style="margin-bottom:16px">
         <label class="room-input-section" style="margin-bottom:6px;">
           <span style="font-weight:600;color:#555;font-size:1rem;">Report email address</span>
@@ -469,7 +469,7 @@ Block B&#9;Room 10&#9;2HLF0001ST0000"></textarea>
 
       <div class="action-buttons">
         <button class="button" onclick="parseAndGenerate()">⚡ Generate QR + Link</button>
-        <button class="button secondary" onclick="loadSavedPcData()">📂 Load Saved</button>
+        <button class="button secondary" onclick="loadSavedPcData()">Load Saved</button>
         <button class="button danger" onclick="clearPcData()">✕ Clear</button>
         <button class="button secondary" onclick="showPage('mainMenuPage')">← Back to Menu</button>
       </div>
@@ -492,9 +492,9 @@ Block B&#9;Room 10&#9;2HLF0001ST0000"></textarea>
       <p style="font-size:0.78rem;color:#999;margin-bottom:10px;text-align:center;">↑ Tap the box above to copy the link</p>
 
       <div class="action-buttons">
-        <button class="button success" onclick="copyLink()">📋 Copy Link</button>
-        <button class="button" onclick="emailLink()" style="background:linear-gradient(135deg,#0077cc,#0099ff)">✉️ Send Link by Email</button>
-        <button class="button warning" onclick="downloadPcJson()">📥 Download JSON</button>
+        <button class="button success" onclick="copyLink()">Copy Link</button>
+        <button class="button" onclick="emailLink()" style="background:linear-gradient(135deg,#0077cc,#0099ff)">Send Link by Email</button>
+        <button class="button warning" onclick="downloadPcJson()">Download JSON</button>
       </div>
     </div>
 
@@ -512,7 +512,6 @@ Block B&#9;Room 10&#9;2HLF0001ST0000"></textarea>
   ══════════════════════════════════════ -->
   <div id="tabletLoadPage" class="page">
     <div class="card">
-      <span class="splash-icon">📡</span>
       <h2 style="text-align:center;margin-bottom:10px;color:#333;">Load Inspection Data</h2>
       <p style="text-align:center;color:#666;font-size:0.95rem;line-height:1.6;margin-bottom:22px;">
         Open the share link from the PC to start instantly,<br>or paste it below.
@@ -524,7 +523,7 @@ Block B&#9;Room 10&#9;2HLF0001ST0000"></textarea>
 
       <div class="divider-or">or</div>
 
-      <button class="button success" style="width:100%;margin-bottom:10px" onclick="loadSavedTabletData()">💾 Resume Last Saved Inspection</button>
+      <button class="button success" style="width:100%;margin-bottom:10px" onclick="loadSavedTabletData()">Resume Last Saved Inspection</button>
       <button class="button secondary" style="width:100%" onclick="showPage('mainMenuPage')">← Back</button>
     </div>
   </div>
@@ -564,7 +563,6 @@ Block B&#9;Room 10&#9;2HLF0001ST0000"></textarea>
       <!-- ECS list -->
       <div id="ecsGrid" class="code-inspection-grid">
         <div style="text-align:center;padding:40px 20px;color:#aaa">
-          <div style="font-size:2.5rem;margin-bottom:12px">🏗️</div>
           <div style="font-weight:600;font-size:1rem;color:#555;margin-bottom:6px">Select a building and room</div>
           <div style="font-size:0.9rem">Use the dropdowns above to navigate.</div>
         </div>
@@ -577,8 +575,8 @@ Block B&#9;Room 10&#9;2HLF0001ST0000"></textarea>
       </div>
 
       <div class="action-buttons">
-        <button class="button success" onclick="startExportFlow()">📊 Export to CSV</button>
-        <button class="button warning" onclick="downloadTabletJson()">💾 Save Data (JSON)</button>
+        <button class="button success" onclick="startExportFlow()">Export / Send data</button>
+        <button class="button warning" onclick="downloadTabletJson()">Save backup locally</button>
         <button class="button secondary" onclick="showPage('mainMenuPage')">← Menu</button>
       </div>
     </div>
@@ -605,7 +603,6 @@ Block B&#9;Room 10&#9;2HLF0001ST0000"></textarea>
 
     <!-- Send by email -->
     <button class="action-sheet-btn" id="emailCsvBtn" onclick="emailCsv()">
-      <span class="as-icon">✉️</span>
       <div>
         <div>Send by Email</div>
         <div class="as-sub" id="emailCsvSub">Opens your email app with the CSV attached</div>
@@ -614,7 +611,6 @@ Block B&#9;Room 10&#9;2HLF0001ST0000"></textarea>
 
     <!-- Save / Download -->
     <button class="action-sheet-btn" onclick="downloadCsvOnly()">
-      <span class="as-icon">📥</span>
       <div>
         <div>Save to Device</div>
         <div class="as-sub">Downloads the CSV file to this device</div>
@@ -656,14 +652,14 @@ function buildMenu() {
         // Desktop — show both options
         const pcBtn = document.createElement('button');
         pcBtn.className = 'menu-button primary';
-        pcBtn.innerHTML = `💻 PC Setup<div style="font-size:0.9rem;font-weight:normal;margin-top:5px;opacity:0.8;">Enter data &amp; generate QR / share link</div>`;
+        pcBtn.innerHTML = `PC Setup<div style="font-size:0.9rem;font-weight:normal;margin-top:5px;opacity:0.8;">Enter data &amp; generate QR / share link</div>`;
         pcBtn.onclick = () => showPage('pcSetupPage');
         container.appendChild(pcBtn);
     }
 
     const tabletBtn = document.createElement('button');
     tabletBtn.className = 'menu-button green';
-    tabletBtn.innerHTML = `📱 Tablet Inspection<div style="font-size:0.9rem;font-weight:normal;margin-top:5px;opacity:0.8;">Load data and carry out inspection</div>`;
+    tabletBtn.innerHTML = `Tablet Inspection<div style="font-size:0.9rem;font-weight:normal;margin-top:5px;opacity:0.8;">Load data and carry out inspection</div>`;
     tabletBtn.onclick = () => goTablet();
     container.appendChild(tabletBtn);
 }
