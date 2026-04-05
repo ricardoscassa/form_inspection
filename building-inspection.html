@@ -933,16 +933,26 @@ function copyLink() {
 }
 
 // ── PC: Send share link by email ──────────────────────────────
-// Generates a .eml file — double-clicking it opens Outlook with the message
-// ready to send, including a proper styled button linking to the inspection.
+// Generates a .eml — opens in Outlook/Mail ready to send.
+// Includes QR code as inline base64 image + Open Inspection button.
 function emailLink() {
     const url = S.shareUrl || document.getElementById('shareLinkBox').textContent;
     if (!url) { showMsg('Generate First', 'Click Generate QR + Link first.'); return; }
-    const email = getReportEmail();
+    const email    = getReportEmail();
     const dateLabel = todayReadable();
-    const dateFile  = dateStr();
 
-    // HTML body of the email — styled button, no raw URL visible
+    // ── Get QR as base64 PNG from the canvas ──
+    const canvas   = document.getElementById('qrCanvas');
+    const qrBase64 = canvas.toDataURL('image/png');   // data:image/png;base64,....
+    const qrSrc    = qrBase64.split(',')[1];           // just the base64 part
+    const hasQR    = qrSrc && qrSrc.length > 100;     // false if canvas is blank
+
+    // ── Build HTML body ──
+    const qrBlock = hasQR
+        ? '<p style="margin:0 0 6px;font-size:12px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Scan QR Code</p>' +
+          '<img src="data:image/png;base64,' + qrSrc + '" width="180" height="180" style="border:3px solid #e1e5e9;border-radius:10px;display:block;margin:0 auto 20px;" alt="QR Code"/>'
+        : '';
+
     const htmlBody = [
         '<!DOCTYPE html><html><head><meta charset="UTF-8"></head>',
         '<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">',
@@ -950,14 +960,15 @@ function emailLink() {
         '<tr><td align="center">',
         '<table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">',
         '<tr><td style="background:linear-gradient(135deg,#667eea,#764ba2);padding:28px 40px;text-align:center;">',
-        '<h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.3px;">Building Inspection</h1>',
+        '<h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;">Building Inspection</h1>',
         '<p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:13px;">' + dateLabel + '</p>',
         '</td></tr>',
-        '<tr><td style="padding:36px 40px;text-align:center;">',
-        '<p style="margin:0 0 8px;font-size:15px;color:#333;font-weight:600;">Your inspection data is ready.</p>',
-        '<p style="margin:0 0 28px;font-size:13px;color:#666;line-height:1.6;">Open the link below on your tablet or phone to load today\'s inspection and begin.</p>',
-        '<a href="' + url + '" style="display:inline-block;background:#667eea;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 38px;border-radius:8px;letter-spacing:0.3px;">Open Inspection</a>',
-        '<p style="margin:28px 0 0;font-size:11px;color:#bbb;">If the button does not open, forward this email to your tablet and tap it there.</p>',
+        '<tr><td style="padding:32px 40px;text-align:center;">',
+        '<p style="margin:0 0 6px;font-size:15px;color:#333;font-weight:600;">Your inspection data is ready.</p>',
+        '<p style="margin:0 0 28px;font-size:13px;color:#666;line-height:1.6;">Scan the QR code or tap the button below to load today\'s inspection on your tablet.</p>',
+        qrBlock,
+        '<a href="' + url + '" style="display:inline-block;background:#667eea;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 38px;border-radius:8px;">Open Inspection</a>',
+        '<p style="margin:24px 0 0;font-size:11px;color:#bbb;">If the button does not open, forward this email to your tablet and tap it there.</p>',
         '</td></tr>',
         '<tr><td style="background:#f8f9fa;padding:16px 40px;text-align:center;border-top:1px solid #e9ecef;">',
         '<p style="margin:0;font-size:11px;color:#aaa;">Production Control Inspection System</p>',
@@ -965,43 +976,70 @@ function emailLink() {
         '</table></td></tr></table></body></html>'
     ].join('');
 
-    // Plain-text alternative (shown by email clients that block HTML)
+    // ── Plain-text fallback ──
     const plainText = 'Building Inspection — ' + dateLabel + '\r\n\r\n' +
         'Your inspection data is ready. Open the link below on your tablet:\r\n\r\n' +
         url + '\r\n\r\nProduction Control Inspection System';
 
-    // Build a valid .eml file — double-click opens it in Outlook ready to send
-    const to = email || '';
-    const subject = 'Building Inspection — ' + dateLabel;
-    const boundary = 'bi_' + Date.now();
+    // ── Build .eml (multipart/related so inline image works in Outlook) ──
+    const to       = email || '';
+    const subject  = 'Building Inspection — ' + dateLabel;
+    const bOuter   = 'bi_outer_' + Date.now();
+    const bInner   = 'bi_inner_' + Date.now();
+    const cid      = 'qrcode@bi';
 
-    const eml = [
+    // Replace the data URI src with a CID reference for Outlook compatibility
+    const htmlBodyCid = hasQR
+        ? htmlBody.replace('data:image/png;base64,' + qrSrc, 'cid:' + cid)
+        : htmlBody;
+
+    let emlParts = [
         'MIME-Version: 1.0',
         'To: ' + to,
         'Subject: ' + subject,
-        'Content-Type: multipart/alternative; boundary="' + boundary + '"',
+        'Content-Type: multipart/mixed; boundary="' + bOuter + '"',
         '',
-        '--' + boundary,
+        '--' + bOuter,
+        'Content-Type: multipart/alternative; boundary="' + bInner + '"',
+        '',
+        '--' + bInner,
         'Content-Type: text/plain; charset=UTF-8',
         'Content-Transfer-Encoding: 7bit',
         '',
         plainText,
         '',
-        '--' + boundary,
+        '--' + bInner,
         'Content-Type: text/html; charset=UTF-8',
         'Content-Transfer-Encoding: 7bit',
         '',
-        htmlBody,
+        htmlBodyCid,
         '',
-        '--' + boundary + '--'
-    ].join('\r\n');
+        '--' + bInner + '--'
+    ];
 
-    // Open the .eml directly — OS hands it to Mail/Outlook without saving first
-    const blob = new Blob([eml], { type: 'message/rfc822' });
+    // Attach QR as inline image part if available
+    if (hasQR) {
+        emlParts = emlParts.concat([
+            '',
+            '--' + bOuter,
+            'Content-Type: image/png',
+            'Content-Transfer-Encoding: base64',
+            'Content-ID: <' + cid + '>',
+            'Content-Disposition: inline; filename="qrcode.png"',
+            '',
+            qrSrc,
+            ''
+        ]);
+    }
+
+    emlParts.push('--' + bOuter + '--');
+
+    const eml    = emlParts.join('\r\n');
+    const blob   = new Blob([eml], { type: 'message/rfc822' });
     const emlUrl = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = emlUrl;
-    a.target = '_blank';
+    const a      = document.createElement('a');
+    a.href       = emlUrl;
+    a.target     = '_blank';
     a.click();
     setTimeout(() => URL.revokeObjectURL(emlUrl), 3000);
 }
