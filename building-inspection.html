@@ -297,6 +297,52 @@ textarea, input[type=text], input[type=email] { -webkit-user-select: text; user-
 .status-option:last-child { border-bottom: none; }
 .status-option:hover, .status-option:active { background-color: #f0f0f0; }
 .status-option.clear { color: #dc3545; font-style: italic; font-size: 13px; }
+
+/* ── User-added ECS codes ── */
+.user-added-badge {
+    display: inline-block;
+    background: #fff3cd;
+    color: #856404;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 10px;
+    margin-left: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    vertical-align: middle;
+}
+.grid-row.user-added { border-color: #ffc107; background: #fffdf0; }
+.grid-row.user-added .code-cell { color: #856404; }
+.add-ecs-btn {
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px;
+    border: 2px dashed #c0c0c0;
+    border-radius: 10px;
+    background: none;
+    color: #888;
+    font-size: 0.95rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+.add-ecs-btn:hover { border-color: #667eea; color: #667eea; background: #f8f8ff; }
+.add-ecs-modal-input {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #e1e5e9;
+    border-radius: 10px;
+    font-size: 16px;
+    font-family: inherit;
+    margin-bottom: 12px;
+    -webkit-appearance: none;
+    background: white;
+    color: #333;
+}
+.add-ecs-modal-input:focus { outline: none; border-color: #667eea; }
 .status-option.clear:hover { background: #fff5f5; }
 
 /* ── Navigation ── */
@@ -576,6 +622,14 @@ Block B&#9;Room 10&#9;2HLF0001ST0000"></textarea>
         <button class="button nav-button" id="nextBtn" onclick="navRoom(1)">Next Room →</button>
       </div>
 
+      <!-- Building complete button — shown only when all ECS verified -->
+      <div id="submitBldBtn" style="display:none;margin-top:16px;">
+        <button class="button success" style="width:100%;font-size:1.1rem;padding:18px;
+          background:linear-gradient(135deg,#28a745,#20c997);" onclick="submitBuildingComplete()">
+          Building Complete — Send Report
+        </button>
+      </div>
+
       <div class="action-buttons">
         <button class="button success" onclick="startExportFlow()">Export to CSV</button>
         <button class="button warning" onclick="downloadTabletJson()">Save Data (JSON)</button>
@@ -627,6 +681,21 @@ Block B&#9;Room 10&#9;2HLF0001ST0000"></textarea>
 
 <!-- Compression (pako = zlib deflate, matches VBA zlib output) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+<!-- Add ECS modal -->
+<div id="addEcsModal" class="modal">
+  <div class="modal-content">
+    <h3 style="margin-bottom:10px;color:#333;">Add ECS Code</h3>
+    <p id="addEcsRoomLabel" style="font-size:0.85rem;color:#666;margin-bottom:16px;"></p>
+    <input type="text" id="addEcsInput" class="add-ecs-modal-input"
+           placeholder="Enter ECS code" autocomplete="off" autocorrect="off"
+           autocapitalize="characters" spellcheck="false">
+    <div class="modal-buttons">
+      <button class="button success" onclick="confirmAddEcs()">Add</button>
+      <button class="button secondary" onclick="closeAddEcsModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- QR lib -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
@@ -676,12 +745,12 @@ function buildMenu() {
 const S = {
     data: null,
     results: {},
+    userAdded: {},        // key -> true  (tracks which ECS codes were added by user on tablet)
     curBld: null,
     curRoom: null,
     roomList: [],
     shareUrl: null,
     compact: null,
-    // generated CSV blob URL (reused for email)
     _csvUrl: null,
     _csvFilename: null,
 };
@@ -732,7 +801,7 @@ function todayReadable() {
 }
 function p2(n) { return String(n).padStart(2,'0'); }
 function mkKey(b, r, e) { return `${b}|${r}|${e}`; }
-function getCodes(b, r) { return S.data?.d?.[b]?.[r] || []; }
+function getCodes(b, r) { return S.data?.d?.[b]?.[r] || []; }  // includes user-added (merged in applyData)
 function isRoomDone(b, r) {
     const codes = getCodes(b, r);
     return codes.length > 0 && codes.every(e => !!S.results[mkKey(b, r, e)]);
@@ -959,17 +1028,21 @@ function emailLink() {
         '<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:30px 0;">',
         '<tr><td align="center">',
         '<table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">',
+        // Header
         '<tr><td style="background:linear-gradient(135deg,#667eea,#764ba2);padding:28px 40px;text-align:center;">',
         '<h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;">Building Inspection</h1>',
         '<p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:13px;">' + dateLabel + '</p>',
         '</td></tr>',
+        // Body — QR on top, then divider line, then button
         '<tr><td style="padding:32px 40px;text-align:center;">',
-        '<p style="margin:0 0 6px;font-size:15px;color:#333;font-weight:600;">Your inspection data is ready.</p>',
-        '<p style="margin:0 0 28px;font-size:13px;color:#666;line-height:1.6;">Scan the QR code or tap the button below to load today\'s inspection on your tablet.</p>',
-        qrBlock,
-        '<a href="' + url + '" style="display:inline-block;background:#667eea;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 38px;border-radius:8px;">Open Inspection</a>',
-        '<p style="margin:24px 0 0;font-size:11px;color:#bbb;">If the button does not open, forward this email to your tablet and tap it there.</p>',
+        '<p style="margin:0 0 20px;font-size:15px;color:#333;font-weight:600;">Your inspection data is ready.</p>',
+        hasQR ? qrBlock : '',
+        hasQR ? '<hr style="border:none;border-top:1px solid #e9ecef;margin:24px 0;"/>' : '',
+        '<p style="margin:0 0 20px;font-size:13px;color:#666;">Tap the button below on your tablet to open the inspection.</p>',
+        '<a href="' + url + '" style="display:inline-block;background:#667eea;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 38px;border-radius:8px;letter-spacing:0.3px;">Open Inspection</a>',
+        '<p style="margin:20px 0 0;font-size:11px;color:#bbb;">If the button does not open, forward this email to your tablet and tap it there.</p>',
         '</td></tr>',
+        // Footer
         '<tr><td style="background:#f8f9fa;padding:16px 40px;text-align:center;border-top:1px solid #e9ecef;">',
         '<p style="margin:0;font-size:11px;color:#aaa;">Production Control Inspection System</p>',
         '</td></tr>',
@@ -1140,12 +1213,24 @@ function loadSavedTabletData() {
 function applyData(compact, results) {
     S.data = compact;
     S.results = results || {};
+    S.userAdded = (results && results._userAdded) ? results._userAdded : {};
     S.curBld = null; S.curRoom = null; S.roomList = [];
+
+    // Restore any user-added ECS codes into the data structure
+    Object.keys(S.userAdded).forEach(key => {
+        const parts = key.split('|');
+        if (parts.length < 3) return;
+        const [b, r, e] = parts;
+        if (!S.data.d[b]) return;
+        if (!S.data.d[b][r]) return;
+        if (!S.data.d[b][r].includes(e)) S.data.d[b][r].push(e);
+    });
 
     // Pick up report email embedded in payload (set on PC)
     if (compact._email) {
         localStorage.setItem('bi_settings', JSON.stringify({ email: compact._email }));
     }
+    // _bld_emails is kept in S.data — accessible via S.data._bld_emails[bld].to / .complete
 
     showPage('tabletInspectPage');
     renderBldDD();
@@ -1267,6 +1352,14 @@ function updateInfo() {
     const roomIdx = S.roomList.indexOf(S.curRoom) + 1;
     document.getElementById('inspInfo').textContent =
         `Room ${roomIdx} of ${S.roomList.length}  ·  ${done} / ${codes.length} filled`;
+    checkBuildingComplete();
+}
+
+function checkBuildingComplete() {
+    const btn = document.getElementById('submitBldBtn');
+    if (!btn || !S.curBld || !S.data) return;
+    const complete = isBldDone(S.curBld);
+    btn.style.display = complete ? 'block' : 'none';
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1295,13 +1388,20 @@ function renderEcs(bld, room) {
     codes.forEach(ecs => {
         const key = mkKey(bld, room, ecs);
         const val = S.results[key] || '';
+        const isUA = !!S.userAdded[key];
 
         const row = document.createElement('div');
-        row.className = 'grid-row' + (val ? ' filled' : '');
+        row.className = 'grid-row' + (val ? ' filled' : '') + (isUA ? ' user-added' : '');
 
         const codeDiv = document.createElement('div');
         codeDiv.className = 'code-cell';
         codeDiv.textContent = ecs;
+        if (isUA) {
+            const badge = document.createElement('span');
+            badge.className = 'user-added-badge';
+            badge.textContent = 'Added';
+            codeDiv.appendChild(badge);
+        }
         row.appendChild(codeDiv);
 
         const controlsRow = document.createElement('div');
@@ -1372,14 +1472,126 @@ function renderEcs(bld, room) {
         row.appendChild(controlsRow);
         grid.appendChild(row);
     });
+
+    // Add ECS button at the bottom of the list
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-ecs-btn';
+    addBtn.type = 'button';
+    addBtn.textContent = '+ Add ECS Code';
+    addBtn.addEventListener('click', () => openAddEcsModal(bld, room));
+    grid.appendChild(addBtn);
 }
+
+// ─────────────────────────────────────────────────────────────
+//  BUILDING COMPLETE — send completion report email
+// ─────────────────────────────────────────────────────────────
+function submitBuildingComplete() {
+    if (!S.curBld || !S.data) return;
+    if (!isBldDone(S.curBld)) {
+        showMsg('Not Complete', 'Some ECS codes in this building still need a status.');
+        return;
+    }
+
+    // Completion email stored in payload as _bld_emails: { "BLD1": { to, complete } }
+    let completionEmail = '';
+    if (S.data._bld_emails && S.data._bld_emails[S.curBld]) {
+        completionEmail = S.data._bld_emails[S.curBld].complete || '';
+    }
+    // fallback to generic report email
+    if (!completionEmail) completionEmail = getReportEmail();
+
+    // Build summary table of this building
+    const bld = S.curBld;
+    const COL = [18, 20, 26];
+    const pad = (s, n) => String(s).substring(0, n).padEnd(n);
+    const div = COL.map(n => '-'.repeat(n)).join('+');
+    const hdr = pad('Room', COL[0]) + '|' + pad('ECS Code', COL[1]) + '|' + pad('Status', COL[2]);
+    const rows = [div, hdr, div];
+    let total = 0, done = 0;
+    for (const r in S.data.d[bld]) {
+        S.data.d[bld][r].forEach(e => {
+            total++;
+            const v = S.results[mkKey(bld, r, e)] || '';
+            if (v) done++;
+            const ua = S.userAdded[mkKey(bld, r, e)] ? ' *' : '';
+            rows.push(pad(r, COL[0]) + '|' + pad(e + ua, COL[1]) + '|' + pad(v || '—', COL[2]));
+        });
+    }
+    rows.push(div);
+    const uaCount = Object.keys(S.userAdded).filter(k => k.startsWith(bld + '|')).length;
+    const uaNote  = uaCount > 0 ? `\n(* = ${uaCount} user-added code${uaCount > 1 ? 's' : ''})` : '';
+
+    const subject = encodeURIComponent(`Inspection Complete — ${bld} — ${todayReadable()}`);
+    const body = encodeURIComponent(
+        `Inspection report for building: ${bld}\n` +
+        `Date: ${todayReadable()}\n` +
+        `Verified: ${done} of ${total} ECS codes\n` +
+        uaNote + '\n\n' +
+        rows.join('\n') +
+        '\n\nProduction Control Inspection System'
+    );
+
+    const to = completionEmail || '';
+    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  ADD ECS MODAL
+// ─────────────────────────────────────────────────────────────
+function openAddEcsModal(bld, room) {
+    S._addEcsBld  = bld;
+    S._addEcsRoom = room;
+    document.getElementById('addEcsRoomLabel').textContent =
+        `Building: ${bld}  ·  Room: ${room}`;
+    document.getElementById('addEcsInput').value = '';
+    document.getElementById('addEcsModal').classList.add('active');
+    setTimeout(() => document.getElementById('addEcsInput').focus(), 100);
+}
+
+function closeAddEcsModal() {
+    document.getElementById('addEcsModal').classList.remove('active');
+    S._addEcsBld = null; S._addEcsRoom = null;
+}
+
+function confirmAddEcs() {
+    const ecs = document.getElementById('addEcsInput').value.trim().toUpperCase();
+    if (!ecs) { showMsg('Required', 'Please enter an ECS code.'); return; }
+
+    const b = S._addEcsBld, r = S._addEcsRoom;
+    if (!b || !r || !S.data?.d?.[b]?.[r]) return;
+
+    const key = mkKey(b, r, ecs);
+
+    // Duplicate check
+    if (S.data.d[b][r].includes(ecs)) {
+        showMsg('Already Exists', `ECS code "${ecs}" is already in this room.`);
+        return;
+    }
+
+    // Add to data structure and mark as user-added
+    S.data.d[b][r].push(ecs);
+    S.userAdded[key] = true;
+
+    closeAddEcsModal();
+    renderEcs(b, r);
+    updateInfo(); renderRoomDD(); renderBldDD(); updateNavBtns(); saveTablet();
+}
+
+// Allow Enter key in the modal input
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('addEcsInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') confirmAddEcs();
+        if (e.key === 'Escape') closeAddEcsModal();
+    });
+});
 
 // ─────────────────────────────────────────────────────────────
 //  SAVE
 // ─────────────────────────────────────────────────────────────
 function saveTablet() {
     if (!S.data) return;
-    localStorage.setItem('bi_tablet', JSON.stringify({ ...S.data, _r: S.results }));
+    const payload = { ...S.data, _r: { ...S.results, _userAdded: S.userAdded } };
+    localStorage.setItem('bi_tablet', JSON.stringify(payload));
 }
 
 function downloadTabletJson() {
@@ -1396,12 +1608,14 @@ function downloadTabletJson() {
 // ─────────────────────────────────────────────────────────────
 function buildCsvContent() {
     if (!S.data) return null;
-    let csv = 'Building,Room,ECS Code,Status\n';
+    let csv = 'Building,Room,ECS Code,Status,Source\n';
     for (const b in S.data.d)
         for (const r in S.data.d[b])
             S.data.d[b][r].forEach(e => {
-                const v = S.results[mkKey(b, r, e)] || '';
-                csv += `"${b}","${r}","${e}","${v.replace(/"/g,'""')}"\n`;
+                const key = mkKey(b, r, e);
+                const v   = S.results[key] || '';
+                const src = S.userAdded[key] ? 'User Added' : 'Original';
+                csv += `"${b}","${r}","${e}","${v.replace(/"/g,'""')}","${src}"\n`;
             });
     return csv;
 }
@@ -1485,26 +1699,32 @@ function emailCsv() {
             }
         }
 
-        // Build fixed-width plain-text table
-        const COL = [18, 18, 22, 28];
+        // Build fixed-width plain-text table (Source column shows user-added)
+        const COL = [16, 16, 20, 26, 12];
         const pad = (s, n) => String(s).substring(0, n).padEnd(n);
         const divider = COL.map(n => '-'.repeat(n)).join('+');
         const header  = pad('Building', COL[0]) + '|' +
                         pad('Room',     COL[1]) + '|' +
                         pad('ECS Code', COL[2]) + '|' +
-                        pad('Status',   COL[3]);
+                        pad('Status',   COL[3]) + '|' +
+                        pad('Source',   COL[4]);
 
         let tableLines = [divider, header, divider];
         verifiedRows.forEach(({ b, r, e, v }) => {
+            const src = S.userAdded[mkKey(b, r, e)] ? 'User Added' : 'Original';
             tableLines.push(
                 pad(b, COL[0]) + '|' + pad(r, COL[1]) + '|' +
-                pad(e, COL[2]) + '|' + pad(v, COL[3])
+                pad(e, COL[2]) + '|' + pad(v, COL[3]) + '|' + pad(src, COL[4])
             );
         });
         tableLines.push(divider);
 
+        // Count user-added
+        const uaCount = verifiedRows.filter(({b,r,e}) => S.userAdded[mkKey(b,r,e)]).length;
+        const uaNote  = uaCount > 0 ? `\n(includes ${uaCount} user-added ECS code${uaCount>1?'s':''})` : '';
+
         const tableText = verifiedRows.length
-            ? `\nVerified items (${totalFilled} of ${totalCodes}):\n\n` + tableLines.join('\n')
+            ? `\nVerified items (${totalFilled} of ${totalCodes}):${uaNote}\n\n` + tableLines.join('\n')
             : `\nNo items verified yet (0 of ${totalCodes}).`;
 
         const body = encodeURIComponent(
